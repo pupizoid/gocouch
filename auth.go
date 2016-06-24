@@ -11,7 +11,7 @@ type Auth interface {
 	// AddAuthHeaders add authorisation headers
 	AddAuthHeaders(*http.Request)
 	// UpdateAuth updates authorisation headers for
-	// futher requests
+	// further requests
 	UpdateAuth(*http.Response)
 }
 

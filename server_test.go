@@ -37,7 +37,7 @@ func TestActiveTasks(t *testing.T) {
 		t.Logf("Error: %v", err)
 		t.Fail()
 	}
-	// todo: add checking authorisation and some task apperance (continious replication)
+	// todo: add checking authorisation and some task appearance (continious replication)
 }
 
 func TestGetAllDbs(t *testing.T) {
