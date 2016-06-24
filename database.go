@@ -98,7 +98,7 @@ func (db *Database) Info() (*DBInfo, error) {
 	return &out, nil
 }
 
-// CreateDB creates database on couchdb instance and if successfull returns it
+// CreateDB creates database on couchdb instance and if successful returns it
 func (srv *Server) CreateDB(name string) (*Database, error) {
 	_, err := srv.conn.request("PUT", queryURL(name), nil, nil, srv.auth, 0)
 	if err != nil {
