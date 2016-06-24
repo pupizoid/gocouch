@@ -57,7 +57,7 @@ func queryURL(path ...string) string {
 	return strings.TrimRight(URL, "/")
 }
 
-// GetDatabase checks existance of specified database on couchdb instance and return it
+// GetDatabase checks existence of specified database on couchdb instance and return it
 func (srv *Server) GetDatabase(name string, auth Auth) (*Database, error) {
 	resp, err := srv.conn.request("HEAD", queryURL(name), nil, nil, auth, 0)
 	if err != nil {
@@ -98,7 +98,7 @@ func (db *Database) Info() (*DBInfo, error) {
 	return &out, nil
 }
 
-// CreateDB creates database on couchdb instance and if succesfull returns it
+// CreateDB creates database on couchdb instance and if successfull returns it
 func (srv *Server) CreateDB(name string) (*Database, error) {
 	_, err := srv.conn.request("PUT", queryURL(name), nil, nil, srv.auth, 0)
 	if err != nil {
