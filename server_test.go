@@ -108,6 +108,7 @@ func TestGetLog(t *testing.T) {
 
 func TestReplicate(t *testing.T) {
 	srv := getConnection(t)
+	srv.MustGetDatabase("testing", nil)
 	result, err := srv.Replicate("testing", "testing2", Options{"create_target": true})
 	if err != nil {
 		t.Logf("Error: %v", err)
