@@ -113,8 +113,9 @@ func TestReplicate(t *testing.T) {
 		t.Logf("Error: %v", err)
 		t.Fail()
 	}
-	if !result.Ok {
+	if result != nil && !result.Ok {
 		t.Logf("Request was unsuccessfull, %#v\n", result)
+		t.Fail()
 	}
 }
 
