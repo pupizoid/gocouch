@@ -1,9 +1,9 @@
 package gocouch
 
 import (
-	"testing"
-	"strings"
 	"bytes"
+	"strings"
+	"testing"
 )
 
 func getConnection(t *testing.T) *Server {
@@ -57,7 +57,7 @@ func TestGetAllDbs(t *testing.T) {
 func TestGetDBEvent(t *testing.T) {
 	srv := getConnection(t)
 	var result map[string]interface{}
-	if err := srv.GetDBEvent(&result, requestOptions{"timeout": "1"}); err != nil {
+	if err := srv.GetDBEvent(&result, Options{"timeout": "1"}); err != nil {
 		t.Logf("Error: %v", err)
 		t.Fail()
 	}
@@ -108,8 +108,8 @@ func TestGetLog(t *testing.T) {
 
 func TestReplicate(t *testing.T) {
 	srv := getConnection(t)
-	result, err := srv.Replicate("testing", "testing2", requestOptions{"create_target": true})
-	if  err != nil {
+	result, err := srv.Replicate("testing", "testing2", Options{"create_target": true})
+	if err != nil {
 		t.Logf("Error: %v", err)
 		t.Fail()
 	}
@@ -149,4 +149,3 @@ func TestUUIDs(t *testing.T) {
 		t.Fail()
 	}
 }
-

@@ -103,7 +103,7 @@ func (srv *Server) GetAllDbs(o interface{}) error {
 // Query parameters are equal to official docs:
 // 	http://docs.couchdb.org/en/1.6.1/api/server/common.html#db-updates
 // Note: `timeout` option accepts milliseconds instead of seconds
-func (srv *Server) GetDBEvent(o interface{}, options requestOptions) error {
+func (srv *Server) GetDBEvent(o interface{}, options Options) error {
 	url := ""
 	for k, v := range options {
 		url += fmt.Sprintf("&%s=%s", k, v)
@@ -144,6 +144,7 @@ func (srv *Server) GetDBEventChan(size int) (chan DatabaseEvent, error) {
 		defer func() {
 			if r := recover(); r != nil {
 				// channel closed externally, close the connection
+				// todo: handle errors
 				fmt.Println(r)
 				resp.Body.Close()
 			}
@@ -203,7 +204,7 @@ func (srv *Server) GetLog(size int) (*bytes.Buffer, error) {
 }
 
 // Replicate provides replication management
-func (srv *Server) Replicate(source, target string, options requestOptions) (*ReplicationResult, error) {
+func (srv *Server) Replicate(source, target string, options Options) (*ReplicationResult, error) {
 	request := make(map[string]interface{})
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"

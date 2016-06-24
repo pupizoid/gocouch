@@ -21,7 +21,8 @@ type (
 		error, reason string
 	}
 
-	requestOptions map[string]interface{}
+	// Options allow to specify request parameters
+	Options map[string]interface{}
 
 	// Error is a general struct containing information about failed request
 	Error struct {
