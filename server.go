@@ -249,7 +249,7 @@ func (srv *Server) Restart() error {
 // Stats provides couchdb usage statistics statistics
 func (srv *Server) Stats(path []string, o interface{}) error {
 	time.Sleep(time.Second)
-	resp, err := srv.conn.request("GET", "/_stats/" +  strings.Join(path, "/"), nil, nil, srv.auth, 0)
+	resp, err := srv.conn.request("GET", "/_stats/"+strings.Join(path, "/"), nil, nil, srv.auth, 0)
 	if err != nil {
 		return err
 	}
