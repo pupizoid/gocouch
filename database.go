@@ -251,16 +251,14 @@ func (db *Database) MustInsertMany(docs interface{}) ([]UpdateResult, error) {
 	return db.Update(docs, true, true, true)
 }
 
-// DeleteMany is a shortcut to Update method. Use it when you have documents
-// you want to delete from database.
-//
-// Argument may be `[]interface{}` or `[]map[string]interface{}`
-//
-// If you pass a slice of struct note that they must have fields with
-// tags "_id" and "_rev", or error will be returned
-// For maps here is a similar requirement, they must have both "_id" and
-// "_rev" keys
-func (db *Database) DeleteMany(docs interface{}) ([]UpdateResult, error) {
+// delete uses Update method to perform bult delete operations
+func (db *Database) delete(docs interface{}, atomic, updateRev, fullCommit bool) (result []UpdateResult, err error) {
+	defer func () {
+		if r := recover(); r != nil {
+			result = nil
+			err = errors.New("Invalid argument type, expected []map[string]interface{} or []interface{}")
+		}
+	}()
 	var payload []map[string]interface{}
 	in := reflect.TypeOf(docs)
 	switch in.Kind() {
@@ -282,6 +280,7 @@ func (db *Database) DeleteMany(docs interface{}) ([]UpdateResult, error) {
 				dv := reflect.ValueOf(tempDoc)
 				temp := make(map[string]interface{})
 				for k := 0; k < dt.NumField(); k++ {
+					// todo: add field checks
 					if dt.Field(k).Tag.Get("json") == "_id" {
 						temp["_id"] = dv.Field(k).Interface().(string)
 					}
@@ -301,6 +300,28 @@ func (db *Database) DeleteMany(docs interface{}) ([]UpdateResult, error) {
 		} else {
 			return nil, errors.New("Unsupported document type")
 		}
+	default:
+		return nil, errors.New("DeleteMany accepts only slices")
 	}
-	return db.Update(payload, false, true, true)
+	result, err = db.Update(payload, atomic, updateRev, fullCommit)
+	return
 }
+
+// DeleteMany is a shortcut to delete method. Use it when you have documents
+// you want to delete from database.
+//
+// Argument may be `[]interface{}` or `[]map[string]interface{}`
+//
+// If you pass a slice of struct note that they must have fields with
+// tags "_id" and "_rev", or error will be returned
+// For maps here is a similar requirement, they must have both "_id" and
+// "_rev" keys
+func (db *Database) DeleteMany(docs interface{}) ([]UpdateResult, error) {
+	return db.delete(docs, false, true, true)
+}
+
+// MustDeleteMany acts same like DeleteMany but ensures all documents to be deleted
+func (db *Database) MustDeleteMany(docs interface{}) ([]UpdateResult, error) {
+	return db.delete(docs, true, true, true)
+}
+

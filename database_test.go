@@ -231,5 +231,23 @@ func TestDeleteMany(t *testing.T) {
 		t.Logf("Error: %v", err)
 		t.Fail()
 	}
+	// test invalid map or data type
+	payload = []TestDoc2{}
+	payload = append(payload, TestDoc2{"a", 1, "1", ""}, TestDoc2{"b", 2, "2", ""})
+	result, _ = db.MustInsertMany(payload)
+	var payload4 []map[string]string
+	for _, item := range result {
+		tmp := make(map[string]string)
+		tmp["_id"] = string(item.ID)
+		tmp["_rev"] = string(item.Rev)
+		payload4 = append(payload4, tmp)
+	}
+	_, err = db.MustDeleteMany(payload4)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Invalid") {
+			t.Logf("Error: %v", err)
+			t.Fail()
+		}
+	}
 	db.Delete()
 }
