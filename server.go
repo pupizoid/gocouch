@@ -106,11 +106,13 @@ func (srv *Server) GetAllDbs(o interface{}) error {
 func (srv *Server) GetDBEvent(o interface{}, options Options) error {
 	url := ""
 	for k, v := range options {
-		url += fmt.Sprintf("&%s=%s", k, v)
+		url += fmt.Sprintf("&%s=%v", k, v)
 	}
 	if len(url) > 0 {
 		url = strings.Trim(url, "&")
 		url = "/_db_updates?" + url
+	} else {
+		url = "/_db_updates"
 	}
 	resp, err := srv.conn.request("GET", url, nil, nil, srv.auth, 0)
 	if err != nil {
@@ -127,7 +129,7 @@ func (srv *Server) GetDBEvent(o interface{}, options Options) error {
 // GetDBEventChan returns channel that provides events happened on couchdb instance,
 // it's thread safe to use in other goroutines. Also, you must close channel after all things
 // done to release resourses and prevent memory leaks.
-func (srv *Server) GetDBEventChan(size int) (chan DatabaseEvent, error) {
+func (srv *Server) GetDBEventChan(size int) (c chan DatabaseEvent, err error) {
 	if size < 0 {
 		return nil, errors.New("Negative buffer size")
 	}
@@ -144,9 +146,10 @@ func (srv *Server) GetDBEventChan(size int) (chan DatabaseEvent, error) {
 		defer func() {
 			if r := recover(); r != nil {
 				// channel closed externally, close the connection
-				// todo: handle errors
-				fmt.Println(r)
 				resp.Body.Close()
+				if err != nil {
+					c = nil
+				}
 			}
 		}()
 		reader := bufio.NewReader(resp.Body)
@@ -163,7 +166,7 @@ func (srv *Server) GetDBEventChan(size int) (chan DatabaseEvent, error) {
 			out <- payload
 		}
 	}()
-	return out, nil
+	return out, err
 }
 
 // GetMembership returns lists of cluster and all nodes
