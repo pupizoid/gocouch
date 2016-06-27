@@ -24,7 +24,7 @@ func getDatabase(t *testing.T) *Database {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	_, err = srv.GetDatabase("test_database_not_exist", nil)
+	_, err = srv.GetDatabase("database_not_exist", nil)
 	if err != nil {
 		if !strings.Contains(err.Error(), "Not Found") {
 			t.Logf("Error: %v\n", err)
@@ -34,7 +34,7 @@ func getDatabase(t *testing.T) *Database {
 	return db
 }
 
-func TestGetDBInfo(t *testing.T) {
+func TestDatabase_Info(t *testing.T) {
 	db := getDatabase(t)
 	info, err := db.Info()
 	if err != nil {
@@ -47,9 +47,9 @@ func TestGetDBInfo(t *testing.T) {
 	}
 }
 
-func TestCreateDB(t *testing.T) {
+func TestServer_CreateDB(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.CreateDB("test_creation_db")
+	db, err := srv.CreateDB("creation_db")
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -62,9 +62,9 @@ func TestCreateDB(t *testing.T) {
 	db.Delete()
 }
 
-func TestDeleteDB(t *testing.T) {
+func TestDatabase_Delete(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.CreateDB("test_creation_db2")
+	db, err := srv.CreateDB("creation_db2")
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -76,7 +76,7 @@ func TestDeleteDB(t *testing.T) {
 	}
 }
 
-func TestMustGetDatabase(t *testing.T) {
+func TestServer_MustGetDatabase(t *testing.T) {
 	srv := getConnection(t)
 	db, err := srv.MustGetDatabase("any_database", nil)
 	if err != nil {
@@ -91,9 +91,9 @@ func TestMustGetDatabase(t *testing.T) {
 	}
 }
 
-func TestInsert(t *testing.T) {
+func TestDatabase_Inser(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("test_insert", nil)
+	db, err := srv.MustGetDatabase("insert", nil)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -121,7 +121,7 @@ func TestInsert(t *testing.T) {
 	db.Delete()
 }
 
-func TestGetAllDocs(t *testing.T) {
+func TestDatabase_GetAllDocs(t *testing.T) {
 	db := getDatabase(t)
 	result, err := db.GetAllDocs(nil)
 	if err != nil {
@@ -143,7 +143,7 @@ func TestGetAllDocs(t *testing.T) {
 	}
 }
 
-func TestGetAllDocsByIDs(t *testing.T) {
+func TestDatabase_GetAllDocsByIDs(t *testing.T) {
 	db := getDatabase(t)
 	res, err := db.GetAllDocsByIDs([]string{"_design/_auth"}, nil)
 	if err != nil {
@@ -165,9 +165,9 @@ func TestGetAllDocsByIDs(t *testing.T) {
 	}
 }
 
-func TestDBUpdate(t *testing.T) {
+func TestDatabase_InsertMany(t *testing.T) {
 	srv := getConnection(t)
-	db, _ := srv.MustGetDatabase("test_db_update", nil)
+	db, _ := srv.MustGetDatabase("db_update", nil)
 	var payload []TestDoc
 	// test docs with no ids
 	payload = append(payload, TestDoc{"a", 1}, TestDoc{"b", 2})
@@ -195,9 +195,9 @@ func TestDBUpdate(t *testing.T) {
 	db.Delete()
 }
 
-func TestDeleteMany(t *testing.T) {
+func TestDatabase_DeleteMany(t *testing.T) {
 	srv := getConnection(t)
-	db, _ := srv.MustGetDatabase("test_delete_many", nil)
+	db, _ := srv.MustGetDatabase("delete_many", nil)
 	var payload []TestDoc2
 	payload = append(payload, TestDoc2{"a", 1, "1", ""}, TestDoc2{"b", 2, "2", ""})
 	result, _ := db.MustInsertMany(payload)
@@ -252,7 +252,7 @@ func TestDeleteMany(t *testing.T) {
 	db.Delete()
 }
 
-func TestGetAllChangesAndChan(t *testing.T) {
+func TestDatabase_GetAllChanges(t *testing.T) {
 	db := getDatabase(t)
 	changes, err := db.GetAllChanges(nil)
 	if err != nil {
@@ -265,7 +265,7 @@ func TestGetAllChangesAndChan(t *testing.T) {
 	}
 	// check database chan
 	srv := getConnection(t)
-	db, err = srv.MustGetDatabase("test_db_changes", nil)
+	db, err = srv.MustGetDatabase("db_changes", nil)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -279,32 +279,176 @@ func TestGetAllChangesAndChan(t *testing.T) {
 		t.Fail()
 	}
 	go func () {
-		db.Insert(map[string]string{"_id": "test_id"}, false, true)
+		db.Insert(map[string]string{"_id": "id"}, false, true)
 	}()
-	if msg := <- events; len(msg.Changes) < 1 && msg.ID != "test_id" {
+	if msg := <- events; len(msg.Changes) < 1 && msg.ID != "id" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
-	} else {
-		t.Logf("msg: %#v", msg)
 	}
-	db.Insert(map[string]string{"_id": "test_id_2"}, false, true)
-	if msg := <- events; len(msg.Changes) < 1 && msg.ID != "test_id_2" {
+	db.Insert(map[string]string{"_id": "id_2"}, false, true)
+	if msg := <- events; len(msg.Changes) < 1 && msg.ID != "id_2" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
-	} else {
-		t.Logf("msg: %#v", msg)
 	}
 	// test channel overflow
 	for i := 0; i < 5; i++ {
-		db.Insert(map[string]string{"some_field": "test_id_2"}, false, true)
+		db.Insert(map[string]string{"some_field": "id_2"}, false, true)
 	}
 	// channel can't accept new messages
 	if msg := <- events; len(msg.Changes) < 1 {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
-	} else {
-		t.Logf("msg: %#v", msg)
 	}
 	db.Delete()
 }
 
+func TestDatabase_Compact(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("db_compaction", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	defer db.Delete()
+	if err := db.Compact(); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_CompactDesign(t *testing.T) {
+	db := getDatabase(t)
+	if err := db.CompactDesign("_auth"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_EnsureFullCommit(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("full_commit", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.EnsureFullCommit(); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_ViewCleanup(t *testing.T) {
+	db := getDatabase(t)
+	if err := db.ViewCleanup(); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_AddAdmin(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("add_admin", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.AddAdmin("admin"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_DeleteAdmin(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("add_admin", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.DeleteAdmin("admin"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_AddAdminRole(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("add_admin_role", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.AddAdminRole("sudo"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_DeleteAdminRole(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("add_admin_role", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.DeleteAdminRole("sudo"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_AddMember(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("add_member", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.AddMember("member"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_DeleteMember(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("add_member", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.DeleteMember("member"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_AddMemberRole(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("add_member", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.AddMemberRole("dev"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_DeleteMemberRole(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("add_member", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.DeleteMemberRole("dev"); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}

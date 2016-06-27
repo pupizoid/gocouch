@@ -18,7 +18,7 @@ type (
 	}
 
 	couchError struct {
-		error, reason string
+		Err, Reason string
 	}
 
 	// Options allow to specify request parameters
@@ -92,8 +92,8 @@ func parseError(resp *http.Response) error {
 		StatusCode: resp.StatusCode,
 		URL:        resp.Request.URL.String(),
 		Method:     resp.Request.Method,
-		ErrorCode:  couchReply.error,
-		Reason:     couchReply.reason,
+		ErrorCode:  couchReply.Err,
+		Reason:     couchReply.Reason,
 	}
 }
 

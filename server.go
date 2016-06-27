@@ -130,11 +130,8 @@ func (srv *Server) GetDBEvent(o interface{}, options Options) error {
 // GetDBEventChan returns channel that provides events happened on couchdb instance,
 // it's thread safe to use in other goroutines. Also, you must close channel after all things
 // done to release resourses and prevent memory leaks.
-func (srv *Server) GetDBEventChan(size int) (c chan ServerEvent, err error) {
-	if size < 0 {
-		return nil, errors.New("Negative buffer size")
-	}
-		c = make(chan ServerEvent, size)
+func (srv *Server) GetDBEventChan() (c chan ServerEvent, err error) {
+	c = make(chan ServerEvent)
 	cpSrv, err := srv.Copy()
 	if err != nil {
 		return nil, err

@@ -16,7 +16,7 @@ func getConnection(t *testing.T) *Server {
 	return srv
 }
 
-func TestInfo(t *testing.T) {
+func TestServer_Info(t *testing.T) {
 	srv := getConnection(t)
 	info, err := srv.Info()
 	if err != nil {
@@ -30,7 +30,7 @@ func TestInfo(t *testing.T) {
 	}
 }
 
-func TestActiveTasks(t *testing.T) {
+func TestServer_GetActiveTasks(t *testing.T) {
 	srv := getConnection(t)
 	var result []map[string]interface{}
 	err := srv.GetActiveTasks(&result)
@@ -41,7 +41,7 @@ func TestActiveTasks(t *testing.T) {
 	// todo: add checking authorisation and some task appearance (continious replication)
 }
 
-func TestGetAllDbs(t *testing.T) {
+func TestServer_GetAllDbs(t *testing.T) {
 	srv := getConnection(t)
 	var result []string
 	err := srv.GetAllDbs(&result)
@@ -55,11 +55,11 @@ func TestGetAllDbs(t *testing.T) {
 	}
 }
 
-func TestGetDBEvent(t *testing.T) {
+func TestServer_GetDBEvent(t *testing.T) {
 	srv := getConnection(t)
 	go func () {
 		time.Sleep(time.Second)
-		db, _ := srv.MustGetDatabase("test_db_events", nil)
+		db, _ := srv.MustGetDatabase("db_events", nil)
 		defer db.Delete()
 	}()
 	var result map[string]interface{}
@@ -73,9 +73,9 @@ func TestGetDBEvent(t *testing.T) {
 	}
 }
 
-func TestGetDBEventChan(t *testing.T) {
+func TestServer_GetDBEventChan(t *testing.T) {
 	srv := getConnection(t)
-	events, err := srv.GetDBEventChan(10)
+	events, err := srv.GetDBEventChan()
 	defer func() {
 		close(events)
 	}()
@@ -83,21 +83,21 @@ func TestGetDBEventChan(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	db, _ := srv.MustGetDatabase("test_db_events_2", nil)
-	if msg, ok := <- events; !ok || !strings.Contains(msg.Name, "test_db_events") {
+	db, _ := srv.MustGetDatabase("db_events_2", nil)
+	if msg, ok := <- events; !ok || !strings.Contains(msg.Name, "db_events") {
 		t.Logf("Error: %v\n", err)
 		t.Logf("%#v\n", msg)
 		t.Fail()
 	}
 	db.Delete()
-	if msg, ok := <- events; !ok || !strings.Contains(msg.Name, "test_db_events") {
+	if msg, ok := <- events; !ok || !strings.Contains(msg.Name, "db_events") {
 		t.Logf("Error: %v\n", err)
 		t.Logf("%#v\n", msg)
 		t.Fail()
 	}
 }
 
-func TestGetMembership(t *testing.T) {
+func TestServer_GetMembership(t *testing.T) {
 	srv := getConnection(t)
 	var result map[string][]string
 	if err := srv.GetMembership(&result); err != nil {
@@ -109,7 +109,7 @@ func TestGetMembership(t *testing.T) {
 	}
 }
 
-func TestGetLog(t *testing.T) {
+func TestServer_GetLog(t *testing.T) {
 	srv := getConnection(t)
 	result, err := srv.GetLog(10000)
 	if err != nil {
@@ -123,7 +123,7 @@ func TestGetLog(t *testing.T) {
 	}
 }
 
-func TestReplicate(t *testing.T) {
+func TestServer_Replicate(t *testing.T) {
 	srv := getConnection(t)
 	srv.MustGetDatabase("testing", nil)
 	result, err := srv.Replicate("testing", "testing2", Options{"create_target": true})
@@ -148,7 +148,7 @@ func TestReplicate(t *testing.T) {
 //	}
 //}
 
-func TestStats(t *testing.T) {
+func TestServer_Stats(t *testing.T) {
 	srv := getConnection(t)
 	var stats map[string]interface{}
 	if err := srv.Stats([]string{"couchdb", "request_time"}, &stats); err != nil {
@@ -157,7 +157,7 @@ func TestStats(t *testing.T) {
 	}
 }
 
-func TestUUIDs(t *testing.T) {
+func TestServer_GetUUIDs(t *testing.T) {
 	srv := getConnection(t)
 	uuids, err := srv.GetUUIDs(15)
 	if err != nil {

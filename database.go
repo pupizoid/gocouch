@@ -60,6 +60,8 @@ type DatabaseEvent struct {
 	Deleted bool `json:"deleted"`
 }
 
+
+
 const appJSON string = "application/json"
 
 func queryURL(path ...string) string {
@@ -423,4 +425,159 @@ func (db *Database) GetChangesChan(options Options) (c chan DatabaseEvent, err e
 		}
 	}()
 	return
+}
+
+func (db *Database) compact(doc_name string) error {
+	var URL string
+	headers := map[string]string{"Content-Type": "application/json"}
+	if doc_name == "" {
+		URL = queryURL(db.Name, "_compact")
+	} else {
+		URL = queryURL(db.Name, "_compact", doc_name)
+	}
+	resp, err := db.conn.request("POST", URL, headers, nil, db.auth, 0)
+	if err != nil {
+		return err
+	}
+	var result map[string]bool
+	if err := parseBody(resp, &result); err != nil {
+		return err
+	}
+	if val, ok := result["ok"]; !val || !ok {
+		return errors.New("Compaction of database failed")
+	}
+	return nil
+}
+
+func (db *Database) Compact() error {
+	return db.compact("")
+}
+
+func (db *Database) CompactDesign(doc_name string) error {
+	return db.compact(doc_name)
+}
+
+func (db *Database) EnsureFullCommit() error {
+	headers := map[string]string{"Content-Type": "application/json"}
+	resp, err := db.conn.request("POST", queryURL(db.Name, "_ensure_full_commit"), headers, nil, db.auth, 0)
+	if err != nil {
+		return err
+	}
+	var result map[string]interface{}
+	if err := parseBody(resp, &result); err != nil {
+		return err
+	}
+	if val, ok := result["ok"]; !ok || !val.(bool) {
+		return errors.New("Commit failed")
+	}
+	return nil
+}
+
+func (db *Database) ViewCleanup() error {
+	headers := map[string]string{"Content-Type": "application/json"}
+	resp, err := db.conn.request("POST", queryURL(db.Name, "_view_cleanup"), headers, nil, db.auth, 0)
+	if err != nil {
+		return err
+	}
+	var result map[string]bool
+	if err := parseBody(resp, &result); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) AddAdmin(login string) error {
+	var so BaseSecurity
+	if err := db.GetSecurity(&so); err != nil {
+		return err
+	}
+	so.UpdateAdmins(login, false)
+	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) DeleteAdmin(login string) error {
+	var so BaseSecurity
+	if err := db.GetSecurity(&so); err != nil {
+		return err
+	}
+	so.UpdateAdmins(login, true)
+	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) AddAdminRole(role string) error {
+	var so BaseSecurity
+	if err := db.GetSecurity(&so); err != nil {
+		return err
+	}
+	so.UpdateAdminRoles(role, false)
+	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) DeleteAdminRole(role string) error {
+	var so BaseSecurity
+	if err := db.GetSecurity(&so); err != nil {
+		return err
+	}
+	so.UpdateAdminRoles(role, true)
+	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) AddMember(login string) error {
+	var so BaseSecurity
+	if err := db.GetSecurity(&so); err != nil {
+		return err
+	}
+	so.UpdateMembers(login, false)
+	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) DeleteMember(login string) error {
+	var so BaseSecurity
+	if err := db.GetSecurity(&so); err != nil {
+		return err
+	}
+	so.UpdateMembers(login, true)
+	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) AddMemberRole(role string) error {
+	var so BaseSecurity
+	if err := db.GetSecurity(&so); err != nil {
+		return err
+	}
+	so.UpdateMemberRoles(role, false)
+	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) DeleteMemberRole(role string) error {
+	var so BaseSecurity
+	if err := db.GetSecurity(&so); err != nil {
+		return err
+	}
+	so.UpdateMemberRoles(role, true)
+	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
 }
