@@ -25,8 +25,8 @@ type ServerInfo struct {
 	Version string      `json:"version"`
 }
 
-// DatabaseEvent represents couchdb instance information about databases
-type DatabaseEvent struct {
+// ServerEvent represents couchdb instance information about databases
+type ServerEvent struct {
 	Name string `json:"db_name"`
 	Ok   bool   `json:"ok"`
 	Type string `json:"type"`
@@ -53,6 +53,7 @@ func Connect(host string, port int, auth Auth, timeout time.Duration) (*Server, 
 
 // Copy returns a copy of server connection with same settings and auth information
 // but with it's own http client instance
+// todo: move this method to private!?
 func (srv *Server) Copy() (*Server, error) {
 	conn, err := createConnection(srv.conn.url, srv.conn.client.Timeout)
 	if err != nil {
@@ -129,11 +130,11 @@ func (srv *Server) GetDBEvent(o interface{}, options Options) error {
 // GetDBEventChan returns channel that provides events happened on couchdb instance,
 // it's thread safe to use in other goroutines. Also, you must close channel after all things
 // done to release resourses and prevent memory leaks.
-func (srv *Server) GetDBEventChan(size int) (c chan DatabaseEvent, err error) {
+func (srv *Server) GetDBEventChan(size int) (c chan ServerEvent, err error) {
 	if size < 0 {
 		return nil, errors.New("Negative buffer size")
 	}
-	out := make(chan DatabaseEvent, size)
+		c = make(chan ServerEvent, size)
 	cpSrv, err := srv.Copy()
 	if err != nil {
 		return nil, err
@@ -158,15 +159,15 @@ func (srv *Server) GetDBEventChan(size int) (c chan DatabaseEvent, err error) {
 			if err != nil {
 				panic("Failed to read bytes from connection")
 			}
-			var payload DatabaseEvent
+			var payload ServerEvent
 			err = json.Unmarshal(line, &payload)
 			if err != nil {
-				panic("Failed to unmarshal bytes to DatabaseEvent")
+				panic("Failed to unmarshal bytes to ServerEvent")
 			}
-			out <- payload
+			c <- payload
 		}
 	}()
-	return out, err
+	return c, err
 }
 
 // GetMembership returns lists of cluster and all nodes
