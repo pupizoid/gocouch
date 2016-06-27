@@ -91,7 +91,7 @@ func TestServer_MustGetDatabase(t *testing.T) {
 	}
 }
 
-func TestDatabase_Inser(t *testing.T) {
+func TestDatabase_Insert(t *testing.T) {
 	srv := getConnection(t)
 	db, err := srv.MustGetDatabase("insert", nil)
 	if err != nil {
@@ -449,6 +449,89 @@ func TestDatabase_DeleteMemberRole(t *testing.T) {
 	}
 	if err := db.DeleteMemberRole("dev"); err != nil {
 		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_Purge(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("purge1", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	_, rev, _ := db.Insert(map[string]string{"_id": "test", "field": "some_field"}, false, true)
+	var del []map[string]interface{}
+	temp := make(map[string]interface{})
+	temp["_id"] = "test"
+	temp["_rev"] = rev
+	del = append(del, temp)
+	res, err := db.DeleteMany(del)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	res1, err := db.Purge(map[string][]string{"test": []string{res[0].Rev}})
+	if err != nil || res1.Purged["test"][0] != res[0].Rev {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_GetMissedRevs(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("missing_revs", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	id, rev, err := db.Insert(map[string]string{"field": "value"}, false, false)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	payload := map[string][]string{id: []string{rev, "6-460637e73a6288cb24d532bf91f32969"}}
+	result, err := db.GetMissedRevs(payload)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if result["missing_revs"][id][0] != "6-460637e73a6288cb24d532bf91f32969" {
+		t.Logf("Incorrect result: %v\n", result)
+		t.Fail()
+	}
+}
+
+func TestDatabase_GetRevsDiff(t *testing.T) {
+	// todo: test it with single document update api
+}
+
+func TestDatabase_GetRevsLimit(t *testing.T) {
+	db := getDatabase(t)
+	rvl, err := db.GetRevsLimit();
+	if err != nil && rvl != 1000 {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_SetRevsLimit(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("revs_limit", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if err := db.SetRevsLimit(500); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	new, err := db.GetRevsLimit();
+	if err != nil && new != 500 {
+		t.Logf("Unexpected rev limit: %v\n", new)
 		t.Fail()
 	}
 }

@@ -60,7 +60,10 @@ type DatabaseEvent struct {
 	Deleted bool `json:"deleted"`
 }
 
-
+type PurgeResult struct {
+	PurgeSequence int `json:"purge_seq"`
+	Purged        map[string][]string `json:"purged"`
+}
 
 const appJSON string = "application/json"
 
@@ -334,7 +337,7 @@ func (db *Database) delete(docs interface{}, atomic, updateRev, fullCommit bool)
 // DeleteMany is a shortcut to delete method. Use it when you have documents
 // you want to delete from database.
 //
-// Argument may be `[]interface{}` or `[]map[string]interface{}`
+// Argument may be `[]interface{}` or `[]map[string]string`
 //
 // If you pass a slice of struct note that they must have fields with
 // tags "_id" and "_rev", or error will be returned
@@ -577,6 +580,86 @@ func (db *Database) DeleteMemberRole(role string) error {
 	}
 	so.UpdateMemberRoles(role, true)
 	if err := db.SetSecurity(&so); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) GetTempView(_map, reduce string) (*ViewResult, error) {
+	// todo: invoke common View method
+	return nil, nil
+}
+
+func (db *Database) Purge(o map[string][]string) (*PurgeResult, error) {
+	headers := map[string]string{"Content-Type": "application/json"}
+	payload, err := json.Marshal(o)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := db.conn.request("POST", queryURL(db.Name, "_purge"), headers, bytes.NewReader(payload), db.auth, 0)
+	if err != nil {
+		return nil, err
+	}
+	var out PurgeResult
+	if err := parseBody(resp, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (db *Database) GetMissedRevs(o map[string][]string) (map[string]map[string][]string, error) {
+	headers := map[string]string{"Content-Type": "application/json"}
+	payload, err := json.Marshal(o)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := db.conn.request("POST", queryURL(db.Name, "_missing_revs"), headers, bytes.NewReader(payload), db.auth, 0)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]map[string][]string
+	if err := parseBody(resp, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (db *Database) GetRevsDiff(o map[string][]string) (map[string]map[string][]string, error) {
+	headers := map[string]string{"Content-Type": "application/json"}
+	payload, err := json.Marshal(o)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := db.conn.request("POST", queryURL(db.Name, "_revs_diff"), headers, bytes.NewReader(payload), db.auth, 0)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]map[string][]string
+	if err := parseBody(resp, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (db *Database) GetRevsLimit() (count int, err error) {
+	resp, err := db.conn.request("GET", queryURL(db.Name, "_revs_limit"), nil, nil, db.auth, 0)
+	if err != nil {
+		return 0, err
+	}
+	if err := parseBody(resp, &count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (db *Database) SetRevsLimit(count int) error {
+	headers := map[string]string{"Content-Type": "application/json"}
+	resp, err := db.conn.request("PUT", queryURL(db.Name, "_revs_limit"), headers, bytes.NewBuffer([]byte(fmt.Sprint(count))), db.auth, 0)
+	if err != nil {
+		return err
+	}
+	var res map[string]bool
+	if err := parseBody(resp, &res); err != nil || !res["ok"] {
 		return err
 	}
 	return nil
