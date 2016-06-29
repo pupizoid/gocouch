@@ -352,7 +352,8 @@ func TestDatabase_AddAdmin(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	if err := db.AddAdmin("admin"); err != nil {
+	dbSec := db.GetDatabaseSecurity()
+	if err := dbSec.AddAdmin("admin"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -366,7 +367,8 @@ func TestDatabase_DeleteAdmin(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	if err := db.DeleteAdmin("admin"); err != nil {
+	dbSec := db.GetDatabaseSecurity()
+	if err := dbSec.DeleteAdmin("admin"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -379,7 +381,8 @@ func TestDatabase_AddAdminRole(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	if err := db.AddAdminRole("sudo"); err != nil {
+	dbSec := db.GetDatabaseSecurity()
+	if err := dbSec.AddAdminRole("sudo"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -393,7 +396,8 @@ func TestDatabase_DeleteAdminRole(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	if err := db.DeleteAdminRole("sudo"); err != nil {
+	dbSec := db.GetDatabaseSecurity()
+	if err := dbSec.DeleteAdminRole("sudo"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -406,7 +410,8 @@ func TestDatabase_AddMember(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	if err := db.AddMember("member"); err != nil {
+	dbSec := db.GetDatabaseSecurity()
+	if err := dbSec.AddMember("member"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -420,7 +425,8 @@ func TestDatabase_DeleteMember(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	if err := db.DeleteMember("member"); err != nil {
+	dbSec := db.GetDatabaseSecurity()
+	if err := dbSec.DeleteMember("member"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -433,7 +439,8 @@ func TestDatabase_AddMemberRole(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	if err := db.AddMemberRole("dev"); err != nil {
+	dbSec := db.GetDatabaseSecurity()
+	if err := dbSec.AddMemberRole("dev"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -447,7 +454,8 @@ func TestDatabase_DeleteMemberRole(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	if err := db.DeleteMemberRole("dev"); err != nil {
+	dbSec := db.GetDatabaseSecurity()
+	if err := dbSec.DeleteMemberRole("dev"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -561,10 +569,10 @@ func TestDatabase_Get(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	id, rev, err := db.Insert(map[string]string{"test": "test"}, false, false)
+	id, rev, _ := db.Insert(map[string]string{"test": "test"}, false, false)
 	var sampleDoc struct {
-		ID string `json:"_id"`
-		Rev string `json:"_rev"`
+		ID   string `json:"_id"`
+		Rev  string `json:"_rev"`
 		Test string `json:"test"`
 	}
 	if err := db.Get(id, &sampleDoc, nil); err != nil {

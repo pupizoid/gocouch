@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
-	"strings"
 	"net/http"
+	"reflect"
 	"strconv"
+	"strings"
 )
 
 // Database contains connection to couchdb instance and db name
@@ -70,15 +70,17 @@ type PurgeResult struct {
 	Purged        map[string][]string `json:"purged"`
 }
 
+// Destination describes `id` of a document and allow to add some
+// options to use in queries
 type Destination struct {
-	id string
+	id      string
 	options Options
 }
 
 const appJSON string = "application/json"
 const continuous string = "continuous"
 
-func queryURL (path ...string) string {
+func queryURL(path ...string) string {
 	var URL = ""
 	for _, item := range path {
 		URL = URL + "/" + item
@@ -459,13 +461,14 @@ func (db *Database) GetChangesChan(options Options) (c chan DatabaseEvent, err e
 	return
 }
 
-func (db *Database) compact(doc_name string) error {
+// Low lewel Compact query to database
+func (db *Database) compact(docName string) error {
 	var URL string
 	headers := map[string]string{"Content-Type": "application/json"}
-	if doc_name == "" {
+	if docName == "" {
 		URL = queryURL(db.Name, "_compact")
 	} else {
-		URL = queryURL(db.Name, "_compact", doc_name)
+		URL = queryURL(db.Name, "_compact", docName)
 	}
 	resp, err := db.conn.request("POST", URL, headers, nil, db.auth, 0)
 	if err != nil {
@@ -481,14 +484,19 @@ func (db *Database) compact(doc_name string) error {
 	return nil
 }
 
+// Compact runs database compaction process
 func (db *Database) Compact() error {
 	return db.compact("")
 }
 
-func (db *Database) CompactDesign(doc_name string) error {
-	return db.compact(doc_name)
+// CompactDesign copacts the view indexes associated with specified design
+// document
+func (db *Database) CompactDesign(docName string) error {
+	return db.compact(docName)
 }
 
+// EnsureFullCommit tells database to commit any recent changes to the
+// specified database to disk
 func (db *Database) EnsureFullCommit() error {
 	headers := map[string]string{"Content-Type": "application/json"}
 	resp, err := db.conn.request("POST", queryURL(
@@ -506,6 +514,8 @@ func (db *Database) EnsureFullCommit() error {
 	return nil
 }
 
+// ViewCleanup removes view index files that are no longer required
+// by couchdb instance
 func (db *Database) ViewCleanup() error {
 	headers := map[string]string{"Content-Type": "application/json"}
 	resp, err := db.conn.request("POST", queryURL(
@@ -520,107 +530,14 @@ func (db *Database) ViewCleanup() error {
 	return nil
 }
 
-func (db *Database) AddAdmin(login string) error {
-	var so BaseSecurity
-	if err := db.GetSecurity(&so); err != nil {
-		return err
-	}
-	so.UpdateAdmins(login, false)
-	if err := db.SetSecurity(&so); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *Database) DeleteAdmin(login string) error {
-	var so BaseSecurity
-	if err := db.GetSecurity(&so); err != nil {
-		return err
-	}
-	so.UpdateAdmins(login, true)
-	if err := db.SetSecurity(&so); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *Database) AddAdminRole(role string) error {
-	var so BaseSecurity
-	if err := db.GetSecurity(&so); err != nil {
-		return err
-	}
-	so.UpdateAdminRoles(role, false)
-	if err := db.SetSecurity(&so); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *Database) DeleteAdminRole(role string) error {
-	var so BaseSecurity
-	if err := db.GetSecurity(&so); err != nil {
-		return err
-	}
-	so.UpdateAdminRoles(role, true)
-	if err := db.SetSecurity(&so); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *Database) AddMember(login string) error {
-	var so BaseSecurity
-	if err := db.GetSecurity(&so); err != nil {
-		return err
-	}
-	so.UpdateMembers(login, false)
-	if err := db.SetSecurity(&so); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *Database) DeleteMember(login string) error {
-	var so BaseSecurity
-	if err := db.GetSecurity(&so); err != nil {
-		return err
-	}
-	so.UpdateMembers(login, true)
-	if err := db.SetSecurity(&so); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *Database) AddMemberRole(role string) error {
-	var so BaseSecurity
-	if err := db.GetSecurity(&so); err != nil {
-		return err
-	}
-	so.UpdateMemberRoles(role, false)
-	if err := db.SetSecurity(&so); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *Database) DeleteMemberRole(role string) error {
-	var so BaseSecurity
-	if err := db.GetSecurity(&so); err != nil {
-		return err
-	}
-	so.UpdateMemberRoles(role, true)
-	if err := db.SetSecurity(&so); err != nil {
-		return err
-	}
-	return nil
-}
-
+// GetTempView return a pointer to ViewResult with data from temporary view
+// based on map and reduce functions passed into parameters
 func (db *Database) GetTempView(_map, reduce string) (*ViewResult, error) {
 	// todo: invoke common View method
-	return nil, nil
+	return nil, errors.New("not implemented yet")
 }
 
+// Purge permanently removes the referenses to deleted documents from the database
 func (db *Database) Purge(o map[string][]string) (*PurgeResult, error) {
 	headers := map[string]string{"Content-Type": "application/json"}
 	payload, err := json.Marshal(o)
@@ -639,6 +556,11 @@ func (db *Database) Purge(o map[string][]string) (*PurgeResult, error) {
 	return &out, nil
 }
 
+// GetMissedRevs with a given list of revisions returns ones that do not exists
+// in the database. List example:
+//
+// check_revs := map[string][]string{"document_id": []string{"rev1", "rev2"}}
+//
 func (db *Database) GetMissedRevs(o map[string][]string) (map[string]map[string][]string, error) {
 	headers := map[string]string{"Content-Type": "application/json"}
 	payload, err := json.Marshal(o)
@@ -657,6 +579,8 @@ func (db *Database) GetMissedRevs(o map[string][]string) (map[string]map[string]
 	return out, nil
 }
 
+// GetRevsDiff returns the subset of those revs that do not correspond to stored
+// in the database
 func (db *Database) GetRevsDiff(o map[string][]string) (map[string]map[string][]string, error) {
 	headers := map[string]string{"Content-Type": "application/json"}
 	payload, err := json.Marshal(o)
@@ -675,6 +599,7 @@ func (db *Database) GetRevsDiff(o map[string][]string) (map[string]map[string][]
 	return out, nil
 }
 
+// GetRevsLimit gets the current database revision limit
 func (db *Database) GetRevsLimit() (count int, err error) {
 	resp, err := db.conn.request("GET", queryURL(db.Name, "_revs_limit"), nil, nil, db.auth, 0)
 	if err != nil {
@@ -686,6 +611,7 @@ func (db *Database) GetRevsLimit() (count int, err error) {
 	return count, nil
 }
 
+// SetRevsLimit sets the current database revision limit
 func (db *Database) SetRevsLimit(count int) error {
 	headers := map[string]string{"Content-Type": "application/json"}
 	resp, err := db.conn.request("PUT", queryURL(
@@ -700,6 +626,7 @@ func (db *Database) SetRevsLimit(count int) error {
 	return nil
 }
 
+// Exists checks if document with specified id is present in the database
 func (db *Database) Exists(id string, options Options) (size int, rev string, err error) {
 	var URL string
 	for k, v := range options {
@@ -726,6 +653,7 @@ func (db *Database) Exists(id string, options Options) (size int, rev string, er
 	return
 }
 
+// Get fetches single document by it's id
 func (db *Database) Get(id string, o interface{}, options Options) error {
 	var URL string
 	for k, v := range options {
@@ -746,9 +674,13 @@ func (db *Database) Get(id string, o interface{}, options Options) error {
 	return nil
 }
 
-func (db *Database) Put(id string, o interface{}) (string, error) {
+// Put creates new document with specified id or adds new revision to the existing
+// one.
+// Note: to add new revision you must specify the latest rev of the document
+// you want to update, otherwise couchdb will answer 409(Conflict)
+func (db *Database) Put(id string, doc interface{}) (string, error) {
 	headers := map[string]string{"Content-Type": "application/json"}
-	payload, err := json.Marshal(o)
+	payload, err := json.Marshal(doc)
 	if err != nil {
 		return "", err
 	}
@@ -767,9 +699,10 @@ func (db *Database) Put(id string, o interface{}) (string, error) {
 	return "", err
 }
 
+// Del adds new "_deleted" revision to the docuement with specified id
 func (db *Database) Del(id, rev string) (string, error) {
 	resp, err := db.conn.request(http.MethodDelete, queryURL(
-		db.Name, id) + fmt.Sprintf("?rev=%s", rev), nil, nil, db.auth, 0)
+		db.Name, id)+fmt.Sprintf("?rev=%s", rev), nil, nil, db.auth, 0)
 	if err != nil {
 		return "", err
 	}
@@ -783,6 +716,10 @@ func (db *Database) Del(id, rev string) (string, error) {
 	return "", err
 }
 
+// Copy ...copies docuement with specified id to newly created document, ot to
+// existing one.
+// Note: if you're copying document to the existing one, you must specify target
+// latest revision, otherwise couchdb will return 409(Conflict)
 func (db *Database) Copy(id string, dest Destination, options Options) (string, error) {
 	var URL string
 	for k, v := range options {

@@ -1,8 +1,8 @@
 package gocouch
 
 import (
-	"testing"
 	"strings"
+	"testing"
 )
 
 func TestDatabase_GetSecurity(t *testing.T) {
@@ -13,7 +13,7 @@ func TestDatabase_GetSecurity(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	var sec BaseSecurity
+	var sec DefaultSecurity
 	if err := db.GetSecurity(&sec); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -30,7 +30,7 @@ func TestDatabase_SetSecurity(t *testing.T) {
 	}
 	// test setting of custom security object
 	type CustomSecurity struct {
-		BaseSecurity
+		DefaultSecurity
 		CustomField string `json:"custom_field"`
 	}
 	new := new(CustomSecurity)
@@ -50,7 +50,7 @@ func TestDatabase_SetSecurity(t *testing.T) {
 }
 
 func TestBaseSecurity_UpdateAdminRoles(t *testing.T) {
-	var sec BaseSecurity
+	var sec DefaultSecurity
 	if err := sec.UpdateAdminRoles("sudo", false); err != nil || sec.Admins.Roles[0] != "sudo" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -68,7 +68,7 @@ func TestBaseSecurity_UpdateAdminRoles(t *testing.T) {
 }
 
 func TestBaseSecurity_UpdateMemberRoles(t *testing.T) {
-	var sec BaseSecurity
+	var sec DefaultSecurity
 	if err := sec.UpdateMemberRoles("dev", false); err != nil || sec.Members.Roles[0] != "dev" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -86,7 +86,7 @@ func TestBaseSecurity_UpdateMemberRoles(t *testing.T) {
 }
 
 func TestBaseSecurity_UpdateAdmins(t *testing.T) {
-	var sec BaseSecurity
+	var sec DefaultSecurity
 	if err := sec.UpdateAdmins("sudo", false); err != nil || sec.Admins.Names[0] != "sudo" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -104,7 +104,7 @@ func TestBaseSecurity_UpdateAdmins(t *testing.T) {
 }
 
 func TestBaseSecurity_UpdateMembers(t *testing.T) {
-	var sec BaseSecurity
+	var sec DefaultSecurity
 	if err := sec.UpdateMembers("dev", false); err != nil || sec.Members.Names[0] != "dev" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
