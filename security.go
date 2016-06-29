@@ -22,14 +22,14 @@ type DatabaseSecurity struct {
 
 // DefaultSecurity describes common security settings on a database
 type DefaultSecurity struct {
-	Admins  SecurityGroup `jsecn:"admins"`
-	Members SecurityGroup `jsecn:"members"`
+	Admins  SecurityGroup `json:"admins"`
+	Members SecurityGroup `json:"members"`
 }
 
 // SecurityGroup is a part of database security object
 type SecurityGroup struct {
-	Names []string `jsecn:"names,omitempty"`
-	Roles []string `jsecn:"roles,omitempty"`
+	Names []string `json:"names,omitempty"`
+	Roles []string `json:"roles,omitempty"`
 }
 
 // UpdateAdmins allows to add/delete admin into security object
@@ -106,7 +106,7 @@ func (db *Database) GetSecurity(o SecurityObject) error {
 
 // SetSecurity sets database security object
 func (db *Database) SetSecurity(o SecurityObject) error {
-	headers := map[string]string{"Content-Type": "application/jsecn"}
+	headers := map[string]string{"Content-Type": "application/json"}
 	payload, err := json.Marshal(o)
 	if err != nil {
 		return err
