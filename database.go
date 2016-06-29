@@ -1,13 +1,15 @@
 package gocouch
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
-	"bufio"
+	"net/http"
+	"strconv"
 )
 
 // Database contains connection to couchdb instance and db name
@@ -48,31 +50,52 @@ type UpdateResult struct {
 	Ok  bool   `json:"ok"`
 }
 
+// DatabaseChanges represents all changes related to current database
 type DatabaseChanges struct {
-	LastSequence int `json:"last_seq"`
+	LastSequence int             `json:"last_seq"`
 	Rows         []DatabaseEvent `json:"results"`
 }
 
+// DatabaseEvent represents a single change to current database
 type DatabaseEvent struct {
 	Changes []map[string]string `json:"changes"`
-	ID      string `json:"id"`
-	Seq     int `json:"seq"`
-	Deleted bool `json:"deleted"`
+	ID      string              `json:"id"`
+	Seq     int                 `json:"seq"`
+	Deleted bool                `json:"deleted"`
 }
 
+// PurgeResult provides object with result info of purge request
 type PurgeResult struct {
-	PurgeSequence int `json:"purge_seq"`
+	PurgeSequence int                 `json:"purge_seq"`
 	Purged        map[string][]string `json:"purged"`
 }
 
-const appJSON string = "application/json"
+type Destination struct {
+	id string
+	options Options
+}
 
-func queryURL(path ...string) string {
+const appJSON string = "application/json"
+const continuous string = "continuous"
+
+func queryURL (path ...string) string {
 	var URL = ""
 	for _, item := range path {
 		URL = URL + "/" + item
 	}
 	return strings.TrimRight(URL, "/")
+}
+
+func (d *Destination) String() (url string) {
+	for k, v := range d.options {
+		url = url + fmt.Sprintf("%s=%v&", k, v)
+	}
+	if len(d.options) > 0 {
+		url = d.id + "?" + strings.Trim(url, "&")
+	} else {
+		url = d.id
+	}
+	return
 }
 
 // GetDatabase checks existence of specified database on couchdb instance and return it
@@ -254,7 +277,8 @@ func (db *Database) Update(docs interface{}, atomic, updateRev, fullCommit bool)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := db.conn.request("POST", queryURL(db.Name, "_bulk_docs"), headers, bytes.NewReader(payload), db.auth, 0)
+	resp, err := db.conn.request("POST", queryURL(
+		db.Name, "_bulk_docs"), headers, bytes.NewReader(payload), db.auth, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -355,8 +379,9 @@ func (db *Database) MustDeleteMany(docs interface{}) ([]UpdateResult, error) {
 // GetAllChanges fetches all changes for current database
 func (db *Database) GetAllChanges(options Options) (*DatabaseChanges, error) {
 	var query string
-	if val, ok := options["feed"]; ok && val.(string) == "continuous" {
-		return nil, errors.New("This method does not support listening for continuous events, use GetChangesChan instead")
+	if val, ok := options["feed"]; ok && val.(string) == continuous {
+		return nil, errors.New(
+			"This method does not support listening for continuous events, use GetChangesChan instead")
 	}
 	for k, v := range options {
 		query = query + fmt.Sprintf("&%s=%v", k, v)
@@ -377,12 +402,14 @@ func (db *Database) GetAllChanges(options Options) (*DatabaseChanges, error) {
 	return &out, nil
 }
 
+// GetChangesChan returns a channel from which a DatabaseEvents can be obtained
 func (db *Database) GetChangesChan(options Options) (c chan DatabaseEvent, err error) {
 	var query string
 	c = make(chan DatabaseEvent)
-	if val, ok := options["feed"]; ok && val.(string) != "continuous" {
-		return nil, errors.New("This method supports only listening for continuous events, use GetAllChanges instead")
-	} else if ok && val.(string) == "continuous" {
+	if val, ok := options["feed"]; ok && val.(string) != continuous {
+		return nil, errors.New(
+			"This method supports only listening for continuous events, use GetAllChanges instead")
+	} else if ok && val.(string) == continuous {
 		delete(options, "feed")
 	}
 	for k, v := range options {
@@ -409,7 +436,7 @@ func (db *Database) GetChangesChan(options Options) (c chan DatabaseEvent, err e
 				switch r.(type) {
 				case error:
 					// catch goroutine errors
-					err = err
+					err = r.(error)
 				}
 			}
 		}()
@@ -417,12 +444,14 @@ func (db *Database) GetChangesChan(options Options) (c chan DatabaseEvent, err e
 		for {
 			line, err := reader.ReadBytes('\n')
 			if err != nil {
-				panic(errors.New("Error: Failed to read bytes from connection"))
+				panic(errors.New(
+					"Error: Failed to read bytes from connection"))
 			}
 			var payload DatabaseEvent
 			err = json.Unmarshal(line, &payload)
 			if err != nil {
-				panic(errors.New("Error:  Failed to unmarshal bytes to DatabaseEvent"))
+				panic(errors.New(
+					"Error:  Failed to unmarshal bytes to DatabaseEvent"))
 			}
 			c <- payload
 		}
@@ -462,7 +491,8 @@ func (db *Database) CompactDesign(doc_name string) error {
 
 func (db *Database) EnsureFullCommit() error {
 	headers := map[string]string{"Content-Type": "application/json"}
-	resp, err := db.conn.request("POST", queryURL(db.Name, "_ensure_full_commit"), headers, nil, db.auth, 0)
+	resp, err := db.conn.request("POST", queryURL(
+		db.Name, "_ensure_full_commit"), headers, nil, db.auth, 0)
 	if err != nil {
 		return err
 	}
@@ -478,7 +508,8 @@ func (db *Database) EnsureFullCommit() error {
 
 func (db *Database) ViewCleanup() error {
 	headers := map[string]string{"Content-Type": "application/json"}
-	resp, err := db.conn.request("POST", queryURL(db.Name, "_view_cleanup"), headers, nil, db.auth, 0)
+	resp, err := db.conn.request("POST", queryURL(
+		db.Name, "_view_cleanup"), headers, nil, db.auth, 0)
 	if err != nil {
 		return err
 	}
@@ -596,7 +627,8 @@ func (db *Database) Purge(o map[string][]string) (*PurgeResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := db.conn.request("POST", queryURL(db.Name, "_purge"), headers, bytes.NewReader(payload), db.auth, 0)
+	resp, err := db.conn.request("POST", queryURL(
+		db.Name, "_purge"), headers, bytes.NewReader(payload), db.auth, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +645,8 @@ func (db *Database) GetMissedRevs(o map[string][]string) (map[string]map[string]
 	if err != nil {
 		return nil, err
 	}
-	resp, err := db.conn.request("POST", queryURL(db.Name, "_missing_revs"), headers, bytes.NewReader(payload), db.auth, 0)
+	resp, err := db.conn.request("POST", queryURL(
+		db.Name, "_missing_revs"), headers, bytes.NewReader(payload), db.auth, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -630,7 +663,8 @@ func (db *Database) GetRevsDiff(o map[string][]string) (map[string]map[string][]
 	if err != nil {
 		return nil, err
 	}
-	resp, err := db.conn.request("POST", queryURL(db.Name, "_revs_diff"), headers, bytes.NewReader(payload), db.auth, 0)
+	resp, err := db.conn.request("POST", queryURL(
+		db.Name, "_revs_diff"), headers, bytes.NewReader(payload), db.auth, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -654,7 +688,8 @@ func (db *Database) GetRevsLimit() (count int, err error) {
 
 func (db *Database) SetRevsLimit(count int) error {
 	headers := map[string]string{"Content-Type": "application/json"}
-	resp, err := db.conn.request("PUT", queryURL(db.Name, "_revs_limit"), headers, bytes.NewBuffer([]byte(fmt.Sprint(count))), db.auth, 0)
+	resp, err := db.conn.request("PUT", queryURL(
+		db.Name, "_revs_limit"), headers, bytes.NewBuffer([]byte(fmt.Sprint(count))), db.auth, 0)
 	if err != nil {
 		return err
 	}
@@ -663,4 +698,112 @@ func (db *Database) SetRevsLimit(count int) error {
 		return err
 	}
 	return nil
+}
+
+func (db *Database) Exists(id string, options Options) (size int, rev string, err error) {
+	var URL string
+	for k, v := range options {
+		URL = URL + fmt.Sprintf("%s=%v&", k, v)
+	}
+	if len(options) > 0 {
+		URL = queryURL(db.Name, id) + "?" + strings.Trim(URL, "&")
+	} else {
+		URL = queryURL(db.Name, id)
+	}
+	resp, err := db.conn.request("HEAD", URL, nil, nil, db.auth, 0)
+	defer resp.Body.Close()
+	if err != nil {
+		if resp.StatusCode == http.StatusNotFound {
+			err = errors.New("document not found")
+		}
+		return
+	}
+	size, err = strconv.Atoi(resp.Header.Get("Content-Length"))
+	if err != nil {
+		return
+	}
+	rev = strings.Trim(resp.Header.Get("ETag"), "\"")
+	return
+}
+
+func (db *Database) Get(id string, o interface{}, options Options) error {
+	var URL string
+	for k, v := range options {
+		URL = URL + fmt.Sprintf("%s=%v&", k, v)
+	}
+	if len(options) > 0 {
+		URL = queryURL(db.Name, id) + "?" + strings.Trim(URL, "&")
+	} else {
+		URL = queryURL(db.Name, id)
+	}
+	resp, err := db.conn.request(http.MethodGet, URL, nil, nil, db.auth, 0)
+	if err != nil {
+		return err
+	}
+	if err := parseBody(resp, o); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) Put(id string, o interface{}) (string, error) {
+	headers := map[string]string{"Content-Type": "application/json"}
+	payload, err := json.Marshal(o)
+	if err != nil {
+		return "", err
+	}
+	resp, err := db.conn.request(http.MethodPut, queryURL(
+		db.Name, id), headers, bytes.NewReader(payload), db.auth, 0)
+	if err != nil {
+		return "", err
+	}
+	var result map[string]interface{}
+	if err := parseBody(resp, &result); err != nil {
+		return "", err
+	}
+	if val, ok := result["ok"]; ok && val.(bool) {
+		return result["rev"].(string), nil
+	}
+	return "", err
+}
+
+func (db *Database) Del(id, rev string) (string, error) {
+	resp, err := db.conn.request(http.MethodDelete, queryURL(
+		db.Name, id) + fmt.Sprintf("?rev=%s", rev), nil, nil, db.auth, 0)
+	if err != nil {
+		return "", err
+	}
+	var res map[string]interface{}
+	if err := parseBody(resp, &res); err != nil {
+		return "", err
+	}
+	if val, ok := res["ok"]; ok && val.(bool) {
+		return res["rev"].(string), nil
+	}
+	return "", err
+}
+
+func (db *Database) Copy(id string, dest Destination, options Options) (string, error) {
+	var URL string
+	for k, v := range options {
+		URL = URL + fmt.Sprintf("%s=%v&", k, v)
+	}
+	if len(options) > 0 {
+		URL = queryURL(db.Name, id) + "?" + strings.Trim(URL, "&")
+	} else {
+		URL = queryURL(db.Name, id)
+	}
+	resp, err := db.conn.request(
+		"COPY", URL, map[string]string{"Destination": dest.String()}, nil, db.auth, 0)
+	if err != nil {
+		return "", err
+	}
+	var res map[string]interface{}
+	if err := parseBody(resp, &res); err != nil {
+		return "", err
+	}
+	if val, ok := res["ok"]; !ok || !val.(bool) {
+		return "", err
+	}
+	return res["rev"].(string), nil
 }

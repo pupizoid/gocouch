@@ -109,7 +109,7 @@ func TestDatabase_Insert(t *testing.T) {
 	doc2.SomeField1 = "some other field"
 	doc2.SomeField2 = 123
 	doc2.ID = "superID"
-	id, _, err := db.Insert(&doc2, true, true)
+	id, _, err := db.Insert(&doc2, false, false)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -271,22 +271,22 @@ func TestDatabase_GetAllChanges(t *testing.T) {
 		t.Fail()
 	}
 	events, err := db.GetChangesChan(nil)
-	defer func () {
+	defer func() {
 		close(events)
 	}()
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	go func () {
+	go func() {
 		db.Insert(map[string]string{"_id": "id"}, false, true)
 	}()
-	if msg := <- events; len(msg.Changes) < 1 && msg.ID != "id" {
+	if msg := <-events; len(msg.Changes) < 1 && msg.ID != "id" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
 	db.Insert(map[string]string{"_id": "id_2"}, false, true)
-	if msg := <- events; len(msg.Changes) < 1 && msg.ID != "id_2" {
+	if msg := <-events; len(msg.Changes) < 1 && msg.ID != "id_2" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -295,7 +295,7 @@ func TestDatabase_GetAllChanges(t *testing.T) {
 		db.Insert(map[string]string{"some_field": "id_2"}, false, true)
 	}
 	// channel can't accept new messages
-	if msg := <- events; len(msg.Changes) < 1 {
+	if msg := <-events; len(msg.Changes) < 1 {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
@@ -510,7 +510,7 @@ func TestDatabase_GetRevsDiff(t *testing.T) {
 
 func TestDatabase_GetRevsLimit(t *testing.T) {
 	db := getDatabase(t)
-	rvl, err := db.GetRevsLimit();
+	rvl, err := db.GetRevsLimit()
 	if err != nil && rvl != 1000 {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
@@ -529,9 +529,139 @@ func TestDatabase_SetRevsLimit(t *testing.T) {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
 	}
-	new, err := db.GetRevsLimit();
+	new, err := db.GetRevsLimit()
 	if err != nil && new != 500 {
 		t.Logf("Unexpected rev limit: %v\n", new)
+		t.Fail()
+	}
+}
+
+func TestDatabase_Exists(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("doc_info", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	id, rev, err := db.Insert(map[string]string{"test": "test1"}, false, false)
+	size, rev1, err := db.Exists(id, Options{"attachments": true})
+	if size == 0 || err != nil || rev1 != rev {
+		t.Logf("Unexpected size: %v\n", size)
+		t.Logf("Unexpected rev: %v != %v\n", rev1, rev)
+		t.Logf("Unexpected err: %v\n", err)
+		t.Fail()
+	}
+}
+
+func TestDatabase_Get(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("get_doc", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	id, rev, err := db.Insert(map[string]string{"test": "test"}, false, false)
+	var sampleDoc struct {
+		ID string `json:"_id"`
+		Rev string `json:"_rev"`
+		Test string `json:"test"`
+	}
+	if err := db.Get(id, &sampleDoc, nil); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if sampleDoc.Rev != rev || sampleDoc.Test != "test" {
+		t.Logf("Got unexpected document: %#v\n", sampleDoc)
+		t.Fail()
+	}
+}
+
+func TestDatabase_Put(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("doc_put", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	defer db.Delete()
+	rev, err := db.Put("test_id", map[string]string{"test_field": "value"})
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	rev1, err := db.Put("test_id", map[string]string{"test_field": "value2", "_rev": rev})
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	var res map[string]interface{}
+	if err := db.Get("test_id", &res, nil); err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if res["_rev"] != rev1 {
+		t.Logf("Unexpected rev: %s != %s\n", rev, rev1)
+		t.Fail()
+	}
+}
+
+func TestDatabase_Del(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("doc_del", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	defer db.Delete()
+	rev, err := db.Put("test_del", map[string]string{"field": "value"})
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	rev1, err := db.Del("test_del", rev)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if rev1 == rev {
+		t.Log("Revisions are equal")
+		t.Fail()
+	}
+}
+
+func TestDatabase_Copy(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("copy_test", nil)
+	defer db.Delete()
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	_, err = db.Put("copy_id", map[string]string{})
+	rev1, err := db.Put("copy_id3", map[string]string{})
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	rev2, err := db.Copy("copy_id", Destination{id: "copy_id2"}, nil)
+	_, rev3, err := db.Exists("copy_id2", nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	if rev3 != rev2 {
+		t.Logf("Revs are not equal: %s != %s", rev3, rev2)
+		t.Fail()
+	}
+	rev4, err := db.Copy("copy_id", Destination{"copy_id3", Options{"rev": rev1}}, nil)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+	_, rev5, _ := db.Exists("copy_id2", nil)
+	if rev4 == rev5 {
+		t.Logf("Revs are not equal: %s != %s", rev4, rev5)
 		t.Fail()
 	}
 }
