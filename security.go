@@ -14,7 +14,7 @@ type SecurityObject interface {
 	UpdateMemberRoles(role string, delete bool) error
 }
 
-// DatabaseSecurity is a default security object but reffered to the database
+// DatabaseSecurity is a default security object but refered to the database
 type DatabaseSecurity struct {
 	db *Database
 	DefaultSecurity

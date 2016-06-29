@@ -1,3 +1,4 @@
+// Package gocouch implements wrappers for the 95% of CouchDB HTTP API
 package gocouch
 
 import (
