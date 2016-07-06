@@ -66,7 +66,7 @@ func main() {
 
 	document1.Field = "value"
   
-    	// Create document with specified id (also accepts map as a document)
+    // Create document with specified id (also accepts map as a document)
 	db.Put("test_id", &document1)
 	// Get document by id
 	db.Get("test_id", &document2, nil)
