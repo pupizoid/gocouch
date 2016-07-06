@@ -4,6 +4,20 @@ import (
 	"testing"
 )
 
+func TestServer_CreateUser(t *testing.T) {
+	user := UserRecord{
+		Login: "milk",
+		Password: "220162",
+		Type: "user",
+		Roles: []string{"reader", "editor"},
+	}
+	srv := getConnection(t)
+	if err := srv.CreateUser(&user) ;err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+	}
+}
+
 func TestBasicAuth_AddAuthHeaders(t *testing.T) {
 	srv := getConnection(t)
 	db, err := srv.MustGetDatabase("basic_auth_test", BasicAuth{"admin", "admin"})

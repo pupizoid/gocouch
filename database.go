@@ -665,7 +665,7 @@ func (db *Database) Get(id string, o interface{}, options Options) error {
 	} else {
 		URL = queryURL(db.Name, id)
 	}
-	resp, err := db.conn.request(http.MethodGet, URL, nil, nil, db.auth, 0)
+	resp, err := db.conn.request("GET", URL, nil, nil, db.auth, 0)
 	if err != nil {
 		return err
 	}
@@ -685,7 +685,7 @@ func (db *Database) Put(id string, doc interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resp, err := db.conn.request(http.MethodPut, queryURL(
+	resp, err := db.conn.request("PUT", queryURL(
 		db.Name, id), headers, bytes.NewReader(payload), db.auth, 0)
 	if err != nil {
 		return "", err
@@ -702,7 +702,7 @@ func (db *Database) Put(id string, doc interface{}) (string, error) {
 
 // Del adds new "_deleted" revision to the docuement with specified id
 func (db *Database) Del(id, rev string) (string, error) {
-	resp, err := db.conn.request(http.MethodDelete, queryURL(
+	resp, err := db.conn.request("DELETE", queryURL(
 		db.Name, id)+fmt.Sprintf("?rev=%s", rev), nil, nil, db.auth, 0)
 	if err != nil {
 		return "", err
