@@ -286,7 +286,7 @@ func TestDatabase_DeleteMany(t *testing.T) {
 		if !strings.Contains(err.Error(), "Invalid") {
 			t.Logf("Error: %v\n", err)
 			t.Fail()
-		return
+			return
 		}
 	}
 	db.Delete()

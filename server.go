@@ -147,18 +147,22 @@ func (srv *Server) GetDBEventChan() (c chan ServerEvent, err error) {
 				resp.Body.Close()
 				if err != nil {
 					c = nil
+					switch r.(type) {
+					case error:
+						err = r.(error)
+					}
 				}
 			}
 		}()
 		reader := bufio.NewReader(resp.Body)
 		for {
-			line, err := reader.ReadBytes('\n')
-			if err != nil {
+			line, intErr := reader.ReadBytes('\n')
+			if intErr != nil {
 				panic("Failed to read bytes from connection")
 			}
 			var payload ServerEvent
-			err = json.Unmarshal(line, &payload)
-			if err != nil {
+			intErr = json.Unmarshal(line, &payload)
+			if intErr != nil {
 				panic("Failed to unmarshal bytes to ServerEvent")
 			}
 			c <- payload

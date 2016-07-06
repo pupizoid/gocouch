@@ -1,11 +1,11 @@
 package gocouch
 
 import (
-	"encoding/base64"
-	"net/http"
-	"fmt"
-	"encoding/json"
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"net/http"
 )
 
 // Auth is a common interface that provides

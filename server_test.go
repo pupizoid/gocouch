@@ -63,7 +63,7 @@ func TestServer_GetAllDbs(t *testing.T) {
 
 func TestServer_GetDBEvent(t *testing.T) {
 	srv := getConnection(t)
-	go func () {
+	go func() {
 		time.Sleep(time.Second)
 		db, _ := srv.MustGetDatabase("db_events", BasicAuth{"admin", "admin"})
 		defer db.Delete()
@@ -98,14 +98,14 @@ func TestServer_GetDBEventChan(t *testing.T) {
 		t.Fail()
 		return
 	}
-	if msg, ok := <- events; !ok || !strings.Contains(msg.Name, "db_events") {
+	if msg, ok := <-events; !ok || !strings.Contains(msg.Name, "db_events") {
 		t.Logf("Error: %v\n", err)
 		t.Logf("%#v\n", msg)
 		t.Fail()
 		return
 	}
 	db.Delete()
-	if msg, ok := <- events; !ok || !strings.Contains(msg.Name, "db_events") {
+	if msg, ok := <-events; !ok || !strings.Contains(msg.Name, "db_events") {
 		t.Logf("Error: %v\n", err)
 		t.Logf("%#v\n", msg)
 		t.Fail()
@@ -121,7 +121,7 @@ func TestServer_GetMembership(t *testing.T) {
 		if !strings.Contains(err.Error(), "Not supported") {
 			t.Logf("Error: %v\n", err)
 			t.Fail()
-		return
+			return
 		}
 	}
 }

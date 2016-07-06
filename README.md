@@ -6,7 +6,7 @@
 - [x] Server API
 - [x] Database API
 - [x] Document API
-- [ ] Authentication
-- [ ] Attachments
+- [x] Authentication
 - [ ] Design Docs & Views
+- [ ] Attachments
 - [ ] Coverage > 90%
