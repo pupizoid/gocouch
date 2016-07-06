@@ -19,16 +19,18 @@ type TestDoc2 struct {
 
 func getDatabase(t *testing.T) *Database {
 	srv := getConnection(t)
-	db, err := srv.GetDatabase("_users", nil)
+	db, err := srv.GetDatabase("_users", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return nil
 	}
-	_, err = srv.GetDatabase("database_not_exist", nil)
+	_, err = srv.GetDatabase("database_not_exist", BasicAuth{"admin", "admin"})
 	if err != nil {
 		if !strings.Contains(err.Error(), "Not Found") {
 			t.Logf("Error: %v\n", err)
 			t.Fail()
+			return nil
 		}
 	}
 	return db
@@ -40,10 +42,12 @@ func TestDatabase_Info(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if info.Name != "_users" {
 		t.Log("Incorrect db name")
 		t.Fail()
+		return
 	}
 }
 
@@ -53,11 +57,13 @@ func TestServer_CreateDB(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	_, err = srv.GetDatabase(db.Name, srv.auth)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	db.Delete()
 }
@@ -68,35 +74,40 @@ func TestDatabase_Delete(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	err = db.Delete()
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestServer_MustGetDatabase(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("any_database", nil)
+	db, err := srv.MustGetDatabase("any_database", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	db.Delete()
-	db, err = srv.MustGetDatabase("_users", nil)
+	db, err = srv.MustGetDatabase("_users", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_Insert(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("insert", nil)
+	db, err := srv.MustGetDatabase("insert", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	var doc1 TestDoc
 	doc1.SomeField1 = "some string"
@@ -104,6 +115,7 @@ func TestDatabase_Insert(t *testing.T) {
 	if _, _, err = db.Insert(&doc1, false, false); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	var doc2 TestDoc2
 	doc2.SomeField1 = "some other field"
@@ -113,10 +125,12 @@ func TestDatabase_Insert(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if id != "superID" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	db.Delete()
 }
@@ -127,19 +141,23 @@ func TestDatabase_GetAllDocs(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
-	if len(result.Rows) != 1 {
+	if len(result.Rows) < 1 {
 		t.Log("Incorrect row count")
 		t.Fail()
+		return
 	}
 	result, err = db.GetAllDocs(Options{"include_docs": true})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if _, ok := result.Rows[0]["doc"]; !ok {
 		t.Log("Expected doc but got nothing")
 		t.Fail()
+		return
 	}
 }
 
@@ -149,25 +167,34 @@ func TestDatabase_GetAllDocsByIDs(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if len(res.Rows) < 1 {
 		t.Log("Incorrect row count")
 		t.Fail()
+		return
 	}
 	res, err = db.GetAllDocsByIDs([]string{"_design/_auth"}, Options{"include_docs": true})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if _, ok := res.Rows[0]["doc"]; !ok {
 		t.Log("Expected doc but got nothing")
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_InsertMany(t *testing.T) {
 	srv := getConnection(t)
-	db, _ := srv.MustGetDatabase("db_update", nil)
+	db, err := srv.MustGetDatabase("db_update", BasicAuth{"admin", "admin"})
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+		return
+	}
 	var payload []TestDoc
 	// test docs with no ids
 	payload = append(payload, TestDoc{"a", 1}, TestDoc{"b", 2})
@@ -175,10 +202,12 @@ func TestDatabase_InsertMany(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if len(result) != 2 {
 		t.Log("Incorrect result count")
 		t.Fail()
+		return
 	}
 	// test docs with ids
 	var payload2 []TestDoc2
@@ -187,17 +216,24 @@ func TestDatabase_InsertMany(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if len(result) != 2 || result[0].ID != "1" || result[1].ID != "2" {
 		t.Log("Incorrect result with predefined ids")
 		t.Fail()
+		return
 	}
 	db.Delete()
 }
 
 func TestDatabase_DeleteMany(t *testing.T) {
 	srv := getConnection(t)
-	db, _ := srv.MustGetDatabase("delete_many", nil)
+	db, err := srv.MustGetDatabase("delete_many", BasicAuth{"admin", "admin"})
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+		return
+	}
 	var payload []TestDoc2
 	payload = append(payload, TestDoc2{"a", 1, "1", ""}, TestDoc2{"b", 2, "2", ""})
 	result, _ := db.MustInsertMany(payload)
@@ -205,15 +241,17 @@ func TestDatabase_DeleteMany(t *testing.T) {
 	for _, item := range result {
 		payload2 = append(payload2, TestDoc2{ID: item.ID, Rev: item.Rev})
 	}
-	_, err := db.DeleteMany(payload2)
+	_, err = db.DeleteMany(payload2)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	res, err := db.GetAllDocs(nil)
 	if len(res.Rows) > 0 {
 		t.Log("Documents was not deleted")
 		t.Fail()
+		return
 	}
 	// test maps as arguments
 	payload = []TestDoc2{}
@@ -230,6 +268,7 @@ func TestDatabase_DeleteMany(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	// test invalid map or data type
 	payload = []TestDoc2{}
@@ -247,6 +286,7 @@ func TestDatabase_DeleteMany(t *testing.T) {
 		if !strings.Contains(err.Error(), "Invalid") {
 			t.Logf("Error: %v\n", err)
 			t.Fail()
+		return
 		}
 	}
 	db.Delete()
@@ -258,17 +298,21 @@ func TestDatabase_GetAllChanges(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
-	if changes.LastSequence != 1 || len(changes.Rows) != 1 {
+	if changes.LastSequence < 1 || len(changes.Rows) < 1 {
 		t.Log("Incorrect changes object")
+		t.Logf("%#v", changes)
 		t.Fail()
+		return
 	}
 	// check database chan
 	srv := getConnection(t)
-	db, err = srv.MustGetDatabase("db_changes", nil)
+	db, err = srv.MustGetDatabase("db_changes", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	events, err := db.GetChangesChan(nil)
 	defer func() {
@@ -277,6 +321,7 @@ func TestDatabase_GetAllChanges(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	go func() {
 		db.Insert(map[string]string{"_id": "id"}, false, true)
@@ -284,11 +329,13 @@ func TestDatabase_GetAllChanges(t *testing.T) {
 	if msg := <-events; len(msg.Changes) < 1 && msg.ID != "id" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	db.Insert(map[string]string{"_id": "id_2"}, false, true)
 	if msg := <-events; len(msg.Changes) < 1 && msg.ID != "id_2" {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	// test channel overflow
 	for i := 0; i < 5; i++ {
@@ -298,21 +345,24 @@ func TestDatabase_GetAllChanges(t *testing.T) {
 	if msg := <-events; len(msg.Changes) < 1 {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	db.Delete()
 }
 
 func TestDatabase_Compact(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("db_compaction", nil)
+	db, err := srv.MustGetDatabase("db_compaction", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	defer db.Delete()
 	if err := db.Compact(); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
@@ -321,19 +371,22 @@ func TestDatabase_CompactDesign(t *testing.T) {
 	if err := db.CompactDesign("_auth"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_EnsureFullCommit(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("full_commit", nil)
+	db, err := srv.MustGetDatabase("full_commit", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if err := db.EnsureFullCommit(); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
@@ -342,133 +395,156 @@ func TestDatabase_ViewCleanup(t *testing.T) {
 	if err := db.ViewCleanup(); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_AddAdmin(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("add_admin", nil)
+	db, err := srv.MustGetDatabase("add_admin", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
+	}
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+		return
 	}
 	dbSec := db.GetDatabaseSecurity()
 	if err := dbSec.AddAdmin("admin"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_DeleteAdmin(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("add_admin", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("add_admin", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	dbSec := db.GetDatabaseSecurity()
 	if err := dbSec.DeleteAdmin("admin"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_AddAdminRole(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("add_admin_role", nil)
+	db, err := srv.MustGetDatabase("add_admin_role", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	dbSec := db.GetDatabaseSecurity()
 	if err := dbSec.AddAdminRole("sudo"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_DeleteAdminRole(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("add_admin_role", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("add_admin_role", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	dbSec := db.GetDatabaseSecurity()
 	if err := dbSec.DeleteAdminRole("sudo"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_AddMember(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("add_member", nil)
+	db, err := srv.MustGetDatabase("add_member", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	dbSec := db.GetDatabaseSecurity()
 	if err := dbSec.AddMember("member"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_DeleteMember(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("add_member", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("add_member", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	dbSec := db.GetDatabaseSecurity()
 	if err := dbSec.DeleteMember("member"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_AddMemberRole(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("add_member", nil)
+	db, err := srv.MustGetDatabase("add_member", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	dbSec := db.GetDatabaseSecurity()
 	if err := dbSec.AddMemberRole("dev"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_DeleteMemberRole(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("add_member", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("add_member", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	dbSec := db.GetDatabaseSecurity()
 	if err := dbSec.DeleteMemberRole("dev"); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_Purge(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("purge1", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("purge1", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	_, rev, _ := db.Insert(map[string]string{"_id": "test", "field": "some_field"}, false, true)
 	var del []map[string]interface{}
 	temp := make(map[string]interface{})
@@ -479,36 +555,42 @@ func TestDatabase_Purge(t *testing.T) {
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	res1, err := db.Purge(map[string][]string{"test": []string{res[0].Rev}})
 	if err != nil || res1.Purged["test"][0] != res[0].Rev {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_GetMissedRevs(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("missing_revs", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("missing_revs", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	id, rev, err := db.Insert(map[string]string{"field": "value"}, false, false)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	payload := map[string][]string{id: []string{rev, "6-460637e73a6288cb24d532bf91f32969"}}
 	result, err := db.GetMissedRevs(payload)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if result["missing_revs"][id][0] != "6-460637e73a6288cb24d532bf91f32969" {
 		t.Logf("Incorrect result: %v\n", result)
 		t.Fail()
+		return
 	}
 }
 
@@ -522,36 +604,41 @@ func TestDatabase_GetRevsLimit(t *testing.T) {
 	if err != nil && rvl != 1000 {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_SetRevsLimit(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("revs_limit", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("revs_limit", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	if err := db.SetRevsLimit(500); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	new, err := db.GetRevsLimit()
 	if err != nil && new != 500 {
 		t.Logf("Unexpected rev limit: %v\n", new)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_Exists(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("doc_info", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("doc_info", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	id, rev, err := db.Insert(map[string]string{"test": "test1"}, false, false)
 	size, rev1, err := db.Exists(id, Options{"attachments": true})
 	if size == 0 || err != nil || rev1 != rev {
@@ -559,16 +646,19 @@ func TestDatabase_Exists(t *testing.T) {
 		t.Logf("Unexpected rev: %v != %v\n", rev1, rev)
 		t.Logf("Unexpected err: %v\n", err)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_Get(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("get_doc", nil)
+	db, err := srv.MustGetDatabase("get_doc", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	id, rev, _ := db.Insert(map[string]string{"test": "test"}, false, false)
 	var sampleDoc struct {
 		ID   string `json:"_id"`
@@ -578,98 +668,115 @@ func TestDatabase_Get(t *testing.T) {
 	if err := db.Get(id, &sampleDoc, nil); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if sampleDoc.Rev != rev || sampleDoc.Test != "test" {
 		t.Logf("Got unexpected document: %#v\n", sampleDoc)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_Put(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("doc_put", nil)
+	db, err := srv.MustGetDatabase("doc_put", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	defer db.Delete()
 	rev, err := db.Put("test_id", map[string]string{"test_field": "value"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	rev1, err := db.Put("test_id", map[string]string{"test_field": "value2", "_rev": rev})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	var res map[string]interface{}
 	if err := db.Get("test_id", &res, nil); err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if res["_rev"] != rev1 {
 		t.Logf("Unexpected rev: %s != %s\n", rev, rev1)
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_Del(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("doc_del", nil)
+	db, err := srv.MustGetDatabase("doc_del", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	defer db.Delete()
 	rev, err := db.Put("test_del", map[string]string{"field": "value"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	rev1, err := db.Del("test_del", rev)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if rev1 == rev {
 		t.Log("Revisions are equal")
 		t.Fail()
+		return
 	}
 }
 
 func TestDatabase_Copy(t *testing.T) {
 	srv := getConnection(t)
-	db, err := srv.MustGetDatabase("copy_test", nil)
-	defer db.Delete()
+	db, err := srv.MustGetDatabase("copy_test", BasicAuth{"admin", "admin"})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
+	defer db.Delete()
 	_, err = db.Put("copy_id", map[string]string{})
 	rev1, err := db.Put("copy_id3", map[string]string{})
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	rev2, err := db.Copy("copy_id", Destination{id: "copy_id2"}, nil)
 	_, rev3, err := db.Exists("copy_id2", nil)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	if rev3 != rev2 {
 		t.Logf("Revs are not equal: %s != %s", rev3, rev2)
 		t.Fail()
+		return
 	}
 	rev4, err := db.Copy("copy_id", Destination{"copy_id3", Options{"rev": rev1}}, nil)
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()
+		return
 	}
 	_, rev5, _ := db.Exists("copy_id2", nil)
 	if rev4 == rev5 {
 		t.Logf("Revs are not equal: %s != %s", rev4, rev5)
 		t.Fail()
+		return
 	}
 }

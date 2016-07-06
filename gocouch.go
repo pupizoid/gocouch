@@ -56,11 +56,7 @@ func (conn *connection) request(method, path string,
 	if auth != nil {
 		auth.AddAuthHeaders(req)
 	}
-	resp, err := conn.processResponse(req)
-	if err == nil && resp != nil && auth != nil {
-		auth.UpdateAuth(resp)
-	}
-	return resp, err
+	return conn.processResponse(req)
 }
 
 func (conn *connection) processResponse(req *http.Request) (*http.Response, error) {

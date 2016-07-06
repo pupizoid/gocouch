@@ -101,8 +101,9 @@ func (d *Destination) String() (url string) {
 }
 
 // GetDatabase checks existence of specified database on couchdb instance and return it
+// todo: note auth usage...
 func (srv *Server) GetDatabase(name string, auth Auth) (*Database, error) {
-	resp, err := srv.conn.request("HEAD", queryURL(name), nil, nil, auth, 0)
+	resp, err := srv.conn.request("HEAD", queryURL(name), nil, nil, srv.auth, 0)
 	if err != nil {
 		if resp.StatusCode == 404 {
 			return nil, errors.New("Not Found")
