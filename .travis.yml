@@ -5,6 +5,6 @@ go:
 services:
  - couchdb
 before_script:
- - curl -X PUT http://127.0.0.1:5984/_config/admins/adminuser -d '"admin"' 
+ - curl -X PUT http://127.0.0.1:5984/_config/admins/admin -d '"admin"'
 script:
  - go test -v ./...
