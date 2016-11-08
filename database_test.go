@@ -832,7 +832,7 @@ func TestDatabase_Attachment(t *testing.T) {
 		return
 	}
 	// test delete attachment
-	err = db.DelAttachment("test_att_id", "test_att", result["rev"])
+	err = db.DelAttachment("test_att_id", "test_att", result["rev"].(string))
 	if err != nil {
 		t.Log("Error deleting attachment")
 		t.Fail()
