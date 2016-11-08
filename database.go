@@ -164,7 +164,7 @@ func (db *Database) Info() (*DBInfo, error) {
 }
 
 // Returns a copy of current database instance with newly created connection
-func (db *Database) copy() (*Database, error) {
+func (db *Database) copy_db() (*Database, error) {
 	conn, err := createConnection(db.conn.url, db.conn.client.Timeout)
 	if err != nil {
 		return nil, err
@@ -326,8 +326,8 @@ func (db *Database) MustInsertMany(docs interface{}) ([]UpdateResult, error) {
 	return db.Update(docs, true, true, true)
 }
 
-// delete uses Update method to perform bult delete operations
-func (db *Database) delete(docs interface{}, atomic, updateRev, fullCommit bool) (result []UpdateResult, err error) {
+// delete uses Update method to perform bulk delete operations
+func (db *Database) bulkDelete(docs interface{}, atomic, updateRev, fullCommit bool) (result []UpdateResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			result = nil
@@ -392,12 +392,12 @@ func (db *Database) delete(docs interface{}, atomic, updateRev, fullCommit bool)
 // For maps here is a similar requirement, they must have both "_id" and
 // "_rev" keys
 func (db *Database) DeleteMany(docs interface{}) ([]UpdateResult, error) {
-	return db.delete(docs, false, true, true)
+	return db.bulkDelete(docs, false, true, true)
 }
 
 // MustDeleteMany acts same like DeleteMany but ensures all documents to be deleted
 func (db *Database) MustDeleteMany(docs interface{}) ([]UpdateResult, error) {
-	return db.delete(docs, true, true, true)
+	return db.bulkDelete(docs, true, true, true)
 }
 
 // GetAllChanges fetches all changes for current database
@@ -444,7 +444,7 @@ func (db *Database) GetChangesChan(options Options) (c chan DatabaseEvent, err e
 	} else {
 		query = "_changes?feed=continuous"
 	}
-	cpdb, err := db.copy()
+	cpdb, err := db.copy_db()
 	if err != nil {
 		return
 	}
@@ -847,7 +847,7 @@ func (db *Database) DelAttachment(id, name, rev string) error {
 	var result map[string]interface{}
 	if err := parseBody(resp, &result); err != nil { return err }
 
-	if ok, val := result["ok"]; !ok || !val.(bool) {
+	if ok, val := result["ok"]; !ok || !val {
 		return errors.New("Can't delete attachemnt")
 	}
 	return nil
