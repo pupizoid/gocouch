@@ -832,7 +832,7 @@ func (db *Database) GetAttachment(id, name, rev string) (*Attachment, error) {
 // DelAttachment used for deleting document's attachments
 func (db *Database) DelAttachment(id, name, rev string) error {
 	var headers map[string]string
-	if rev !- "" {
+	if rev != "" {
 		headers = map[string]string{"If-Match": rev}
 	} else {
 		return errors.New("Revision can't be empty")
