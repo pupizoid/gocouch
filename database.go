@@ -847,7 +847,7 @@ func (db *Database) DelAttachment(id, name, rev string) error {
 	var result map[string]interface{}
 	if err := parseBody(resp, &result); err != nil { return err }
 
-	if ok, val := result["ok"]; !ok || !val {
+	if val, ok := result["ok"]; !ok || !val.(bool) {
 		return errors.New("Can't delete attachemnt")
 	}
 	return nil
