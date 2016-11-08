@@ -3,6 +3,8 @@ package gocouch
 import (
 	"strings"
 	"testing"
+	"bytes"
+	"io/ioutil"
 )
 
 type TestDoc struct {
@@ -776,6 +778,63 @@ func TestDatabase_Copy(t *testing.T) {
 	_, rev5, _ := db.Exists("copy_id2", nil)
 	if rev4 == rev5 {
 		t.Logf("Revs are not equal: %s != %s", rev4, rev5)
+		t.Fail()
+		return
+	}
+}
+
+func TestDatabase_Attachment(t *testing.T) {
+	srv := getConnection(t)
+	db, err := srv.MustGetDatabase("test_attachments", BasicAuth{"admin", "admin"})
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+		return
+	}
+	defer db.Delete()
+	rev, err := db.Put("test_att_id", map[string]string{})
+	att := &Attachment{"test_att", "text/plain", bytes.NewReader([]byte("test body"))}
+	result, err :=  db.SaveAttachment("test_att_id", rev, att)
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+		return
+	}
+	if result["ok"].(bool) != true {
+		t.Log("Error: unexpected result")
+		t.Fail()
+		return
+	}
+	// Test Attachment info
+	info, err := db.AttachmentInfo("test_att_id", "test_att")
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+		return
+	}
+	if info.Type != "text/plain" {
+		t.Log("Incorrect attachement type information")
+		t.Fail()
+		return
+	}
+	// Test get Attachment
+	att1, err := db.GetAttachment("test_att_id", "test_att", "")
+	if err != nil {
+		t.Logf("Error: %v\n", err)
+		t.Fail()
+		return
+	}
+	payload, err := ioutil.ReadAll(att1.Body)
+	//t.Logf("Payload: %s", payload)
+	if string(payload) != "test body" || err != nil {
+		t.Log("Incorrect attachement body")
+		t.Fail()
+		return
+	}
+	// test delete attachment
+	err = db.DelAttachment("test_att_id", "test_att", result["rev"])
+	if err != nil {
+		t.Log("Error deleting attachment")
 		t.Fail()
 		return
 	}

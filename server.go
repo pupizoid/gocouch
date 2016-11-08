@@ -88,15 +88,15 @@ func (srv *Server) GetActiveTasks(o interface{}) error {
 }
 
 // GetAllDbs returns a list of databases present at the server
-func (srv *Server) GetAllDbs(o interface{}) error {
+func (srv *Server) GetAllDBs() (dbList []string, err error) {
 	resp, err := srv.conn.request("GET", "/_all_dbs", nil, nil, srv.auth, 0)
 	if err != nil {
-		return err
+		return
 	}
-	if err := parseBody(resp, o); err != nil {
-		return err
+	if err := parseBody(resp, &dbList); err != nil {
+		return nil, err
 	}
-	return nil
+	return
 }
 
 // GetDBEvent block execution of program until any db event on couchdb instance

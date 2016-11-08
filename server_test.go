@@ -47,8 +47,7 @@ func TestServer_GetActiveTasks(t *testing.T) {
 
 func TestServer_GetAllDbs(t *testing.T) {
 	srv := getConnection(t)
-	var result []string
-	err := srv.GetAllDbs(&result)
+	result, err := srv.GetAllDBs()
 	if err != nil {
 		t.Logf("Error: %v\n", err)
 		t.Fail()

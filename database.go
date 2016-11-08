@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"io"
+	"io/ioutil"
 )
 
 // Database contains connection to couchdb instance and db name
@@ -77,6 +79,20 @@ type Destination struct {
 	options Options
 }
 
+// Attachment represents attachment to be stored in couchdb
+type Attachment struct {
+	Name, ContentType string
+	Body              io.Reader
+}
+
+// AttachmentInfo provides information about attachment
+type AttachmentInfo struct {
+	Encoding string
+	Length   int
+	Type     string
+	Hash     string
+}
+
 const appJSON string = "application/json"
 const continuous string = "continuous"
 
@@ -101,9 +117,14 @@ func (d *Destination) String() (url string) {
 }
 
 // GetDatabase checks existence of specified database on couchdb instance and return it
-// todo: note auth usage...
 func (srv *Server) GetDatabase(name string, auth Auth) (*Database, error) {
-	resp, err := srv.conn.request("HEAD", queryURL(name), nil, nil, srv.auth, 0)
+	var useAuth Auth
+	if auth != nil {
+		useAuth = auth
+	} else {
+		useAuth = srv.auth
+	}
+	resp, err := srv.conn.request("HEAD", queryURL(name), nil, nil, useAuth, 0)
 	if err != nil {
 		if resp.StatusCode == 404 {
 			return nil, errors.New("Not Found")
@@ -703,7 +724,7 @@ func (db *Database) Put(id string, doc interface{}) (string, error) {
 // Del adds new "_deleted" revision to the docuement with specified id
 func (db *Database) Del(id, rev string) (string, error) {
 	resp, err := db.conn.request("DELETE", queryURL(
-		db.Name, id)+fmt.Sprintf("?rev=%s", rev), nil, nil, db.auth, 0)
+		db.Name, id) + fmt.Sprintf("?rev=%s", rev), nil, nil, db.auth, 0)
 	if err != nil {
 		return "", err
 	}
@@ -717,7 +738,7 @@ func (db *Database) Del(id, rev string) (string, error) {
 	return "", err
 }
 
-// Copy ...copies docuement with specified id to newly created document, ot to
+// Copy... copies docuement with specified id to newly created document, ot to
 // existing one.
 // Note: if you're copying document to the existing one, you must specify target
 // latest revision, otherwise couchdb will return 409(Conflict)
@@ -744,4 +765,90 @@ func (db *Database) Copy(id string, dest Destination, options Options) (string, 
 		return "", err
 	}
 	return res["rev"].(string), nil
+}
+
+// SaveAttachment uploads given attachment to document
+func (db *Database) SaveAttachment(id, rev string, a *Attachment) (map[string]interface{}, error) {
+	headers := map[string]string{
+		"Content-Type": a.ContentType,
+	}
+	resp, err := db.conn.request("PUT", queryURL(db.Name, id, fmt.Sprintf("%s?rev=%s", a.Name, rev)),
+		headers, a.Body, db.auth, 0)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]interface{}
+	if err := parseBody(resp, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AttachementInfo provides basic information about specified attachment
+func (db *Database) AttachmentInfo(id, name string) (*AttachmentInfo, error) {
+	resp, err := db.conn.request("HEAD", queryURL(db.Name, id, name), nil, nil, db.auth, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	contentLength, err := strconv.Atoi(resp.Header.Get("Content-Length"))
+	if err != nil {
+		return nil, err
+	}
+	return &AttachmentInfo{
+		Type: resp.Header.Get("Content-Type"),
+		Length: contentLength,
+		Hash: resp.Header.Get("Content-MD5"),
+		Encoding: resp.Header.Get("Content-Encoding"),
+	}, nil
+}
+
+// GetAttachment fetches attachement from database
+func (db *Database) GetAttachment(id, name, rev string) (*Attachment, error) {
+	var headers map[string]string
+	if rev != "" {
+		headers = map[string]string{"If-Match": rev}
+	}
+	info, err := db.AttachmentInfo(id, name)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := db.conn.request("GET", queryURL(db.Name, id, name), headers, nil, db.auth, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return &Attachment{
+		Name: name,
+		ContentType: info.Type,
+		Body: bytes.NewReader(body),
+	}, nil
+}
+
+// DelAttachment used for deleting document's attachments
+func (db *Database) DelAttachment(id, name, rev string) error {
+	var headers map[string]string
+	if rev !- "" {
+		headers = map[string]string{"If-Match": rev}
+	} else {
+		return errors.New("Revision can't be empty")
+	}
+
+	resp, err := db.conn.request("DELETE", queryURL(db.Name, id, name), headers, nil, db.auth, 0)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := parseBody(resp, &result); err != nil { return err }
+
+	if ok, val := result["ok"]; !ok || !val.(bool) {
+		return errors.New("Can't delete attachemnt")
+	}
+	return nil
 }
